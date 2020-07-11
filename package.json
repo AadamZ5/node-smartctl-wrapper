@@ -22,5 +22,8 @@
   "bugs": {
     "url": "https://github.com/AadamZ5/node-smartctl-wrapper/issues"
   },
-  "homepage": "https://github.com/AadamZ5/node-smartctl-wrapper#readme"
+  "homepage": "https://github.com/AadamZ5/node-smartctl-wrapper#readme",
+  "dependencies": {
+    "promisify-child-process": "^4.1.1"
+  }
 }
