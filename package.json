@@ -2,7 +2,7 @@
   "name": "node-smartctl-wrapper",
   "version": "1.0.0",
   "description": "A wrapper for smartmontools 7 with typed responses",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
