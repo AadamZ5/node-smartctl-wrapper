@@ -12,7 +12,7 @@ sc.then((s) => {
     s.get_device('/dev/sdc').then((r) => {
         let t = r.test("short");
         t.promise.then(() => {
-            "Tested!";
+            console.log("Tested!");
         });
         t.progress.subscribe((pr) => {
             console.log("Progress: " + pr + "%");

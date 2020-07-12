@@ -50,7 +50,7 @@ export class SmartDevice implements ISmartDevice{
 
     test(type: "short"|"long"){
         let progress_subj = new Subject<number>();
-        let p = new Promise(async (resolve, reject) => {
+        let p = new Promise<void>(async (resolve, reject) => {
             this._smart_wrapper_instance.test(this.device_node, type);
             let poll_interval = 1000;//ms
             let progress = 0;
