@@ -1,7 +1,11 @@
 import * as pcp from "promisify-child-process";
-import { SmartAllResponse } from "./typings/all-response";
-import { SmartBaseResponse } from "./typings/base-response";
+import { SmartAllResponse } from "./typings/responses/all-response";
+import { SmartBaseResponse } from "./typings/responses/base-response";
 import { uid, username } from "userid";
+import { SmartListResponse } from "./typings/responses/scan-response";
+import { ISmartDevice, SmartDevice } from "./smart-device";
+import { timeStamp } from "console";
+import { SmartTestResponse } from "./typings/responses/test-response";
 
 interface Version{
     maj: number;
@@ -9,6 +13,8 @@ interface Version{
 }
 
 export class SmartCtl{
+
+    public static instance?: SmartCtl = undefined;
 
     private binary_path?: string;
     private version: Version;
@@ -26,8 +32,8 @@ export class SmartCtl{
 
     private json_format_version: Version;
 
-    constructor(){
-        
+    constructor(binary_path?:string){
+        this.binary_path = binary_path;
     }
 
     /**
@@ -36,22 +42,30 @@ export class SmartCtl{
      * 
      * @returns The instance of this class
      */
-    async init(){
-        //Find binary location
-        const which = await pcp.exec("which smartctl", {
-            timeout: 5000,
-        }).catch((err) => {
-            throw "Couldn't get version info for smartctl! " + err;
-        })
-        if(which.stdout != undefined){
-            let output = which.stdout.toString().replace('\n', '');
-            if((output) && (output != '')){
-                this.binary_path = output;
+    async init(new_instance: boolean = false){
+
+        //Check for already existing instance
+        if((SmartCtl.instance) && (!new_instance)){
+            throw "SmartCtl has already been initialized! Set `new_instance` to true to make a new instance anyways."
+        }
+
+        if(!this.binary_path){
+            //Find binary location
+            const which = await pcp.exec("which smartctl", {
+                timeout: 5000,
+            }).catch((err) => {
+                throw "Couldn't find binary path for smartctl! " + err;
+            })
+            if(which.stdout != undefined){
+                let output = which.stdout.toString().replace('\n', '');
+                if((output) && (output != '')){
+                    this.binary_path = output;
+                }else{
+                    throw "smartctl binary not found! Do you have smartmontools version 7+ installed?";
+                }
             }else{
                 throw "smartctl binary not found! Do you have smartmontools version 7+ installed?";
             }
-        }else{
-            throw "smartctl binary not found! Do you have smartmontools version 7+ installed?";
         }
         
         //Find version
@@ -198,23 +212,87 @@ export class SmartCtl{
             throw "Bad device path " + device_path + "!";
         }
 
-        let out = await pcp.exec(`${this.binary_path} -j -i ${path}`);
+        let out = await pcp.exec(`${this.binary_path} -j -a ${path}`);
         if(!out.stdout){
-            throw `No output from ${this.binary_path}!\nstderr:${out.stderr?.toString()}`;
+            throw `No output from ${this.binary_path}!\nstderr: ${out.stderr?.toString()}`;
         }
 
         let response = out.stdout.toString();
         let obj = JSON.parse(response) as SmartAllResponse;
-        return obj;
+        if(this._check_response_no_errors(obj)){
+            return obj;
+        }
+        else{
+            throw `Error from ${this.binary_path}: ${obj.smartctl.messages!}`
+        }
     }
 
     async get_device(device_path: string){
         let response = await this.all(device_path);
-        
+        let sd: ISmartDevice = {
+            _smart_wrapper_instance: this,
+            attributes: response.ata_smart_attributes.table,
+            capacity: response.user_capacity.bytes,
+            device_node: response.device.name,
+            errors: (response.ata_smart_error_log.extended != undefined) ? (response.ata_smart_error_log.extended.table != undefined) ? response.ata_smart_error_log.extended.table! : [] : [],
+            firmware_version: response.firmware_version,
+            model: response.model_name,
+            overall_pass: response.smart_status.passed,
+            serial: response.serial_number,
+            tests: (response.ata_smart_self_test_log.extended != undefined) ? (response.ata_smart_self_test_log.extended.table != undefined) ? response.ata_smart_self_test_log.extended.table! : [] : [],
+            wwn: response.wwn,
+        };
+        return new SmartDevice(sd);
     }
 
     async get_device_list(){
+        let response = await pcp.exec(`${this.binary_path!} -j --scan-open`);
+        if(!response.stdout){
+            throw `No output from ${this.binary_path}!\nstderr:${response.stderr?.toString()}`;
+        }
 
+        let smart_response = JSON.parse(response.stdout.toString()) as SmartListResponse;
+        return smart_response;
+    }
+
+    async test(device_path: string, type: "short"|"long"){
+        let dev = this._sanitize_kernel_disk_name(device_path);
+        if(!dev){
+            throw "Invalid device path " + device_path + "!";
+        }
+
+        let out = await pcp.exec(`${this.binary_path} -j -t ${type} ${dev}`);
+        if(!out.stdout){
+            throw `No output from ${this.binary_path}!\nstderr: ${out.stderr?.toString()}`;
+        }
+
+        let response = out.stdout.toString();
+        let obj = JSON.parse(response) as SmartTestResponse;
+        if(this._check_response_no_errors(obj)){
+            return true;
+        }else{
+            return false;
+        }
+    }
+
+    async testing(device_path: string){
+        let dev = this._sanitize_kernel_disk_name(device_path);
+        if(!dev){
+            throw "Invalid device path " + device_path + "!";
+        }
+
+        let out = await pcp.exec(`${this.binary_path} -j -a ${dev}`);
+        if(!out.stdout){
+            throw `No output from ${this.binary_path}!\nstderr: ${out.stderr?.toString()}`;
+        }
+
+        let response = out.stdout.toString();
+        let obj = JSON.parse(response) as SmartAllResponse;
+        if(this._check_response_no_errors(obj)){
+            return obj.ata_smart_data.self_test.status.value <= 250 && obj.ata_smart_data.self_test.status.value >= 241;
+        }else{
+            throw `Bad response from ${this.binary_path!}!`;
+        }
     }
     
 }

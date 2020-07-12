@@ -23,14 +23,18 @@ export interface AtaSmartData{
         };
         completion_seconds: number;
     };
+    /**Information about any current self test running */
     self_test:{
         status:{
             value: number;
             string: string;
-            passed: boolean;
+            passed?: boolean;
         };
+        /**The amount of time you should expect a test to take */
         polling_minutes:{
+            /**Expected wait for a short test */
             short: number;
+            /**Expected wait for a long test */
             extended: number;
         };
     };
