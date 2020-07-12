@@ -11,25 +11,38 @@ interface Version{
     maj: number;
     min: number;
 }
-
+/**
+ * This class is a single interface point with `smartctl` binary. This class does checks on version and responses.
+ * Every @see SmartDevice object that this class produces will hold an instance of this class. 
+ * This function shouldn't really be used directly.
+ */
 export class SmartCtl{
 
+    /**The instance of this class that is being used */
     public static instance?: SmartCtl = undefined;
 
+    /**The path of the `smartctl` binary */
     private binary_path?: string;
+
+    /**The `smartctl` version found on the system */
     private version: Version;
+
+    /**The `uid` of the process */
     private executing_uid: number;
 
+    /**The version required for this library to work */
     private readonly required_version: Version = {
         maj: 7,
         min: 0,
     }
 
+    /**The `smartctl` JSON format version this library expects to function properly */
     private readonly required_json_format_version: Version = {
         maj: 1,
         min: 0,
     };
 
+    /**The `smartctl` JSON format version found */
     private json_format_version: Version;
 
     constructor(binary_path?:string){
@@ -165,6 +178,10 @@ export class SmartCtl{
         return this;
     }
 
+    /**
+     * Sanitizes and checks a supplied disk path
+     * @param name_or_path The path string to check
+     */
     private _sanitize_kernel_disk_name(name_or_path: string): string|undefined{
 
         let path_re_1 = new RegExp('(\/(dev)\/sd[A-Z])', 'i'); //matches only '/dev/sd?'
@@ -185,6 +202,10 @@ export class SmartCtl{
         return undefined;
     }
 
+    /**
+     * Checks a @see SmartBaseResponse for errors
+     * @param response 
+     */
     private _check_response_no_errors(response: SmartBaseResponse): boolean{
         if(response.smartctl.messages){
             for (let i = 0; i < response.smartctl.messages.length; i++) {
@@ -227,6 +248,9 @@ export class SmartCtl{
         }
     }
 
+    /**Returns a device object.
+     * @returns SmartDevice
+     */
     async get_device(device_path: string){
         let response = await this.all(device_path);
         let sd: ISmartDevice = {
@@ -245,6 +269,9 @@ export class SmartCtl{
         return new SmartDevice(sd);
     }
 
+    /**
+     * Gets a list of devices that `smartctl` currently sees.
+     */
     async get_device_list(){
         let response = await pcp.exec(`${this.binary_path!} -j --scan-open`);
         if(!response.stdout){
@@ -255,6 +282,11 @@ export class SmartCtl{
         return smart_response;
     }
 
+    /**
+     * Starts a test on a device at `device_path`
+     * @param device_path The path of the device to start the test on
+     * @param type The type of test to start
+     */
     async test(device_path: string, type: "short"|"long"){
         let dev = this._sanitize_kernel_disk_name(device_path);
         if(!dev){
@@ -275,6 +307,10 @@ export class SmartCtl{
         }
     }
 
+    /**
+     * Checks to see if a device is testing or not
+     * @param device_path The path of the device to check.
+     */
     async testing(device_path: string){
         let dev = this._sanitize_kernel_disk_name(device_path);
         if(!dev){
