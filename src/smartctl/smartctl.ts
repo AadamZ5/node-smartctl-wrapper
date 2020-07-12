@@ -1,10 +1,9 @@
 import * as pcp from "promisify-child-process";
 import { SmartAllResponse } from "./typings/all-response";
 import { SmartBaseResponse } from "./typings/base-response";
-import { SmartDevice } from "./smart-device";
 import { uid, username } from "userid";
 
-interface SmartVersion{
+interface Version{
     maj: number;
     min: number;
 }
@@ -12,13 +11,20 @@ interface SmartVersion{
 export class SmartCtl{
 
     private binary_path?: string;
-    private version: SmartVersion;
+    private version: Version;
     private executing_uid: number;
 
-    private required_version: SmartVersion = {
+    private readonly required_version: Version = {
         maj: 7,
         min: 0,
     }
+
+    private readonly required_json_format_version: Version = {
+        maj: 1,
+        min: 0,
+    };
+
+    private json_format_version: Version;
 
     constructor(){
         
@@ -122,7 +128,25 @@ export class SmartCtl{
             }
         }
 
-        //TODO Verify JSON schema version from smartctl output!
+        //Get JSON format version
+        const json_ver = await pcp.exec(`${this.binary_path} -j -V`);
+        if(!json_ver.stdout){
+            console.error("Couldn't get JSON schema version! Possible schema mismatches ahead!");
+        }else{
+            let json_response = json_ver.stdout!.toString();
+            let json_obj = JSON.parse(json_response) as SmartBaseResponse;
+            this.json_format_version = {
+                maj: json_obj.json_format_version[0],
+                min: json_obj.json_format_version[1],
+            };
+        }
+
+        //Check JSON format version
+        if((this.json_format_version.maj >= this.required_json_format_version.maj) && (this.json_format_version.min >= this.required_json_format_version.min)){
+            //Yay!
+        }else{
+            console.error(`smartctl JSON format version ${this.json_format_version.maj}.${this.json_format_version.min} is not supported! This library supports JSON format ${this.required_json_format_version.maj}.${this.required_json_format_version.min}! Possible format errors ahead!`);
+        }
 
         return this;
     }
@@ -186,11 +210,11 @@ export class SmartCtl{
 
     async get_device(device_path: string){
         let response = await this.all(device_path);
-        let device = new SmartDevice();
+        
     }
 
     async get_device_list(){
-        
+
     }
     
 }
