@@ -4,7 +4,7 @@ A wrapper for smartmontools 7 with typed responses
 
 ----
 
-I'm not entirely sure the exact direction this is headed yet, but I'm working around to figure out the exact form of this package. Currently, the goal is to create the ability to manage `SmartDevice`s for an object-oriented approach. This package also allows for just using the `SmartCtlBinder` namespace functions to directly interface with `smartctl` with typed responses.
+I'm not entirely sure the exact direction this is headed yet, but I'm working around to figure out the exact form of this package. Currently, the goal is to create the ability to manage `SmartDevice`s for an object-oriented approach. This package also allows for just using the `SmartCtlWrapper` namespace functions to directly interface with popular `smartctl` uses with typed responses.
 
 Please feel free to contribute!
 

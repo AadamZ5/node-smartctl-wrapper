@@ -28,7 +28,7 @@ export class SmartCtl{
      * @param binary_path Optional path for `smartctl` binary.
      */
     static async initialize(binary_path?: string){
-        return SmartCtlBinder.init(binary_path);
+        return SmartCtlWrapper.init(binary_path);
     }
 
     /**
@@ -41,18 +41,18 @@ export class SmartCtl{
     }
 
     async get_device(device_path: string){
-        return SmartCtlBinder.get_device(device_path);
+        return SmartCtlWrapper.get_device(device_path);
     }
 
     async get_all_devices(){
 
         let device_objects: SmartDevice[] = [];
 
-        let devices = await SmartCtlBinder.get_device_list();
+        let devices = await SmartCtlWrapper.get_device_list();
         for (const device_key in devices.devices) {
             if (devices.devices.hasOwnProperty(device_key)) {
                 const device_listing = devices.devices[device_key];
-                let d = await SmartCtlBinder.get_device(device_listing.name);
+                let d = await SmartCtlWrapper.get_device(device_listing.name);
                 device_objects.push(d);
             }
         }
@@ -68,7 +68,7 @@ export class SmartCtl{
  * This namespace repeats itself in the description.
  * This namespace contains many utility functions for interfacing directly with `smartctl` and returns only typed responses representing exactly what `smartctl` returns.
  */
-export namespace SmartCtlBinder{ //"Bbinders full of women!" - Mitt Romney https://en.wikipedia.org/wiki/Binders_full_of_women
+export namespace SmartCtlWrapper{
 
     /**The path of the `smartctl` binary */
     export let binary_path: string|undefined;
@@ -111,7 +111,7 @@ export namespace SmartCtlBinder{ //"Bbinders full of women!" - Mitt Romney https
             if(which.stdout != undefined){
                 let output = which.stdout.toString().replace('\n', '');
                 if((output) && (output != '')){
-                    SmartCtlBinder.binary_path = output;
+                    SmartCtlWrapper.binary_path = output;
                 }else{
                     throw "smartctl binary not found! Do you have smartmontools version 7+ installed?";
                 }
@@ -121,7 +121,7 @@ export namespace SmartCtlBinder{ //"Bbinders full of women!" - Mitt Romney https
         }
         
         //Find version
-        const ver = await pcp.exec(`${SmartCtlBinder.binary_path} -V`, {
+        const ver = await pcp.exec(`${SmartCtlWrapper.binary_path} -V`, {
             timeout: 5000,
         });
         let version: string|undefined = undefined;
@@ -156,13 +156,13 @@ export namespace SmartCtlBinder{ //"Bbinders full of women!" - Mitt Romney https
                 }
             }
         }else{
-            throw "Couldn't execute smartctl binary with '" + SmartCtlBinder.binary_path + " -V'";
+            throw "Couldn't execute smartctl binary with '" + SmartCtlWrapper.binary_path + " -V'";
         }
 
         //Parse version string
         if(version_parts){
             let parts = version_parts.split('.');
-            SmartCtlBinder.version = {
+            SmartCtlWrapper.version = {
                 maj: Number(parts[0]),
                 min: Number(parts[1]),
             };
@@ -171,15 +171,15 @@ export namespace SmartCtlBinder{ //"Bbinders full of women!" - Mitt Romney https
         }
 
         //Check version string
-        if((SmartCtlBinder.version.maj >= SmartCtlBinder.required_version.maj) && (SmartCtlBinder.version.min >= SmartCtlBinder.required_version.min)){
+        if((SmartCtlWrapper.version.maj >= SmartCtlWrapper.required_version.maj) && (SmartCtlWrapper.version.min >= SmartCtlWrapper.required_version.min)){
             //Yay!
         }else{
-            throw `smartctl version ${SmartCtlBinder.version.maj}.${SmartCtlBinder.version.min} is not supported! This library requires smartctl version 7.0 and up!`;
+            throw `smartctl version ${SmartCtlWrapper.version.maj}.${SmartCtlWrapper.version.min} is not supported! This library requires smartctl version 7.0 and up!`;
         }
 
         //Check for permissions to execute smartctl
-        SmartCtlBinder.executing_uid = process.geteuid();
-        let perm_response = await pcp.exec(`ls -l ${SmartCtlBinder.binary_path}`);
+        SmartCtlWrapper.executing_uid = process.geteuid();
+        let perm_response = await pcp.exec(`ls -l ${SmartCtlWrapper.binary_path}`);
         if(!perm_response.stdout){
             console.error("Can't determine permissions! Possible failures ahead!");
         }else{
@@ -189,29 +189,29 @@ export namespace SmartCtlBinder{ //"Bbinders full of women!" - Mitt Romney https
             let group = parts[3];
 
             let required_uid = uid(user);
-            if(SmartCtlBinder.executing_uid != required_uid){
-                throw "Insufficient permissions to run smartctl! You must be user '" + user + "' to run smartctl! You are '" + username(SmartCtlBinder.executing_uid) + "'.";
+            if(SmartCtlWrapper.executing_uid != required_uid){
+                throw "Insufficient permissions to run smartctl! You must be user '" + user + "' to run smartctl! You are '" + username(SmartCtlWrapper.executing_uid) + "'.";
             }
         }
 
         //Get JSON format version
-        const json_ver = await pcp.exec(`${SmartCtlBinder.binary_path} -j -V`);
+        const json_ver = await pcp.exec(`${SmartCtlWrapper.binary_path} -j -V`);
         if(!json_ver.stdout){
             console.error("Couldn't get JSON schema version! Possible schema mismatches ahead!");
         }else{
             let json_response = json_ver.stdout!.toString();
             let json_obj = JSON.parse(json_response) as SmartBaseResponse;
-            SmartCtlBinder.json_format_version = {
+            SmartCtlWrapper.json_format_version = {
                 maj: json_obj.json_format_version[0],
                 min: json_obj.json_format_version[1],
             };
         }
 
         //Check JSON format version
-        if((SmartCtlBinder.json_format_version.maj >= SmartCtlBinder.required_json_format_version.maj) && (SmartCtlBinder.json_format_version.min >= SmartCtlBinder.required_json_format_version.min)){
+        if((SmartCtlWrapper.json_format_version.maj >= SmartCtlWrapper.required_json_format_version.maj) && (SmartCtlWrapper.json_format_version.min >= SmartCtlWrapper.required_json_format_version.min)){
             //Yay!
         }else{
-            console.error(`smartctl JSON format version ${SmartCtlBinder.json_format_version.maj}.${SmartCtlBinder.json_format_version.min} is not supported! This library supports JSON format ${SmartCtlBinder.required_json_format_version.maj}.${SmartCtlBinder.required_json_format_version.min}! Possible format errors ahead!`);
+            console.error(`smartctl JSON format version ${SmartCtlWrapper.json_format_version.maj}.${SmartCtlWrapper.json_format_version.min} is not supported! This library supports JSON format ${SmartCtlWrapper.required_json_format_version.maj}.${SmartCtlWrapper.required_json_format_version.min}! Possible format errors ahead!`);
         }
     }
 
@@ -261,27 +261,27 @@ export namespace SmartCtlBinder{ //"Bbinders full of women!" - Mitt Romney https
      * @param device_path A reference to the device path like `dev/sda`, `sda`, or `/dev/sda`
      */
     export async function all(device_path: string): Promise<SmartAllResponse>{
-        if(!SmartCtlBinder.binary_path){
+        if(!SmartCtlWrapper.binary_path){
             throw "Binary path is not found. Unable to continue!";
         }
 
-        let path = SmartCtlBinder._sanitize_kernel_disk_name(device_path)
+        let path = SmartCtlWrapper._sanitize_kernel_disk_name(device_path)
         if(path == undefined){
             throw "Bad device path " + device_path + "!";
         }
 
-        let out = await pcp.exec(`${SmartCtlBinder.binary_path} -j -a ${path}`);
+        let out = await pcp.exec(`${SmartCtlWrapper.binary_path} -j -a ${path}`);
         if(!out.stdout){
-            throw `No output from ${SmartCtlBinder.binary_path}!\nstderr: ${out.stderr?.toString()}`;
+            throw `No output from ${SmartCtlWrapper.binary_path}!\nstderr: ${out.stderr?.toString()}`;
         }
 
         let response = out.stdout.toString();
         let obj = JSON.parse(response) as SmartAllResponse;
-        if(SmartCtlBinder._check_response_no_errors(obj)){
+        if(SmartCtlWrapper._check_response_no_errors(obj)){
             return obj;
         }
         else{
-            throw `Error from ${SmartCtlBinder.binary_path}: ${obj.smartctl.messages!}`
+            throw `Error from ${SmartCtlWrapper.binary_path}: ${obj.smartctl.messages!}`
         }
     }
 
@@ -289,7 +289,7 @@ export namespace SmartCtlBinder{ //"Bbinders full of women!" - Mitt Romney https
      * @returns SmartDevice
      */
     export async function get_device(device_path: string){
-        let response = await SmartCtlBinder.all(device_path);
+        let response = await SmartCtlWrapper.all(device_path);
         let sd: ISmartDevice = {
             attributes: response.ata_smart_attributes.table,
             capacity: response.user_capacity.bytes,
@@ -309,9 +309,9 @@ export namespace SmartCtlBinder{ //"Bbinders full of women!" - Mitt Romney https
      * Gets a list of devices that `smartctl` currently sees.
      */
     export async function get_device_list(){
-        let response = await pcp.exec(`${SmartCtlBinder.binary_path!} -j --scan-open`);
+        let response = await pcp.exec(`${SmartCtlWrapper.binary_path!} -j --scan-open`);
         if(!response.stdout){
-            throw `No output from ${SmartCtlBinder.binary_path}!\nstderr:${response.stderr?.toString()}`;
+            throw `No output from ${SmartCtlWrapper.binary_path}!\nstderr:${response.stderr?.toString()}`;
         }
 
         let smart_response = JSON.parse(response.stdout.toString()) as SmartListResponse;
@@ -324,19 +324,19 @@ export namespace SmartCtlBinder{ //"Bbinders full of women!" - Mitt Romney https
      * @param type The type of test to start
      */
     export async function test(device_path: string, type: "short"|"long"){
-        let dev = SmartCtlBinder._sanitize_kernel_disk_name(device_path);
+        let dev = SmartCtlWrapper._sanitize_kernel_disk_name(device_path);
         if(!dev){
             throw "Invalid device path " + device_path + "!";
         }
 
-        let out = await pcp.exec(`${SmartCtlBinder.binary_path} -j -t ${type} ${dev}`);
+        let out = await pcp.exec(`${SmartCtlWrapper.binary_path} -j -t ${type} ${dev}`);
         if(!out.stdout){
-            throw `No output from ${SmartCtlBinder.binary_path}!\nstderr: ${out.stderr?.toString()}`;
+            throw `No output from ${SmartCtlWrapper.binary_path}!\nstderr: ${out.stderr?.toString()}`;
         }
 
         let response = out.stdout.toString();
         let obj = JSON.parse(response) as SmartTestResponse;
-        if(SmartCtlBinder._check_response_no_errors(obj)){
+        if(SmartCtlWrapper._check_response_no_errors(obj)){
             return true;
         }else{
             return false;
@@ -348,22 +348,22 @@ export namespace SmartCtlBinder{ //"Bbinders full of women!" - Mitt Romney https
      * @param device_path The path of the device to check.
      */
     export async function testing(device_path: string){
-        let dev = SmartCtlBinder._sanitize_kernel_disk_name(device_path);
+        let dev = SmartCtlWrapper._sanitize_kernel_disk_name(device_path);
         if(!dev){
             throw "Invalid device path " + device_path + "!";
         }
 
-        let out = await pcp.exec(`${SmartCtlBinder.binary_path} -j -a ${dev}`);
+        let out = await pcp.exec(`${SmartCtlWrapper.binary_path} -j -a ${dev}`);
         if(!out.stdout){
-            throw `No output from ${SmartCtlBinder.binary_path}!\nstderr: ${out.stderr?.toString()}`;
+            throw `No output from ${SmartCtlWrapper.binary_path}!\nstderr: ${out.stderr?.toString()}`;
         }
 
         let response = out.stdout.toString();
         let obj = JSON.parse(response) as SmartAllResponse;
-        if(SmartCtlBinder._check_response_no_errors(obj)){
+        if(SmartCtlWrapper._check_response_no_errors(obj)){
             return obj.ata_smart_data.self_test.status.value <= 250 && obj.ata_smart_data.self_test.status.value >= 241;
         }else{
-            throw `Bad response from ${SmartCtlBinder.binary_path!}!`;
+            throw `Bad response from ${SmartCtlWrapper.binary_path!}!`;
         }
     }
     

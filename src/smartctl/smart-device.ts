@@ -1,7 +1,7 @@
 import { SmartXallResponse } from "./typings/responses/xall-response";
 import { SmartAllResponse, AtaSelfTest, AtaSmartErrorLog } from "./typings/responses/all-response";
 import { SmartAttribute } from "./typings/responses/fragments";
-import { SmartCtlBinder } from "./smartctl";
+import { SmartCtlWrapper } from "./smartctl";
 import { Observable, Subject } from "rxjs";
 
 export interface ISmartDeviceStats{
@@ -47,15 +47,15 @@ export class SmartDevice implements ISmartDevice{
 
     test(type: "short"|"long"){
         let progress_subj = new Subject<number>();
-        SmartCtlBinder.test(this.device_node, type);
+        SmartCtlWrapper.test(this.device_node, type);
         let poll = async () => {
             let poll_interval = 1000;//ms
             let progress = 0;
             let testing = true;
             while (testing) {
                 await new Promise((resolve) => {setTimeout(() => {resolve();}, poll_interval)})
-                let info = await SmartCtlBinder.all(this.device_node);
-                testing = await SmartCtlBinder.testing(this.device_node);
+                let info = await SmartCtlWrapper.all(this.device_node);
+                testing = await SmartCtlWrapper.testing(this.device_node);
                 if(testing){
                     let prog = 100 - ((info.ata_smart_data.self_test.status.value - 240) * 10);
                     if(prog != progress){
