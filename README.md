@@ -24,7 +24,7 @@ Please feel free to contribute!
 ```typescript
 import { SmartCtl } from "node-smartctl-wrapper";
 
-SmartCtl.initialize().then(() => { # `initialize()` is a static and instance-bound function. You can use it either way.
+SmartCtl.initialize().then(() => { // `initialize()` is a static and instance-bound function. You can use it either way.
     let smartctl = new SmartCtl();
     smartctl.get_device('dev/sda').then((device) => {
         console.log(device);
