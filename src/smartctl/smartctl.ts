@@ -11,58 +11,97 @@ interface Version{
     maj: number;
     min: number;
 }
+
 /**
- * This class is a single interface point with `smartctl` binary. This class does checks on version and responses.
- * Every @see SmartDevice object that this class produces will hold an instance of this class. 
- * This function shouldn't really be used directly.
+ * An object class for interfacing with SmartCtl.
  */
 export class SmartCtl{
 
-    /**The instance of this class that is being used */
-    public static instance?: SmartCtl = undefined;
-
-    /**The path of the `smartctl` binary */
-    private binary_path?: string;
-
-    /**The `smartctl` version found on the system */
-    private version: Version;
-
-    /**The `uid` of the process */
-    private executing_uid: number;
-
-    /**The version required for this library to work */
-    private readonly required_version: Version = {
-        maj: 7,
-        min: 0,
+    /**
+     * Creates a SmartCtl object for object stuff
+     */
+    constructor(){
     }
 
+    /**
+     * Initializes the talker to the dooer
+     * @param binary_path Optional path for `smartctl` binary.
+     */
+    static async initialize(binary_path?: string){
+        return SmartCtlBinder.init(binary_path);
+    }
+
+    /**
+     * Initializes the talker to the dooer. This only needs done once and not again for all SmartCtl objects.
+     * In other words, this doesn't need done for every instance of this class.
+     * @param binary_path Optional path for `smartctl` binary.
+     */
+    async initialize(binary_path?: string){
+        return SmartCtl.initialize(binary_path);
+    }
+
+    async get_device(device_path: string){
+        return SmartCtlBinder.get_device(device_path);
+    }
+
+    async get_all_devices(){
+
+        let device_objects: SmartDevice[] = [];
+
+        let devices = await SmartCtlBinder.get_device_list();
+        for (const device_key in devices.devices) {
+            if (devices.devices.hasOwnProperty(device_key)) {
+                const device_listing = devices.devices[device_key];
+                let d = await SmartCtlBinder.get_device(device_listing.name);
+                device_objects.push(d);
+            }
+        }
+
+        return device_objects;
+    }
+}
+
+/**
+ * This namespace is a single interface point with `smartctl` binary. 
+ * This namespace functionally does checks on version and responses upon initialization to check if the version of `smartctl` installed is compatible.
+ * This namespace shouldn't really be used directly, but it is exported so you can use it directly if needed.
+ * This namespace repeats itself in the description.
+ * This namespace contains many utility functions for interfacing directly with `smartctl` and returns only typed responses representing exactly what `smartctl` returns.
+ */
+export namespace SmartCtlBinder{ //"Bbinders full of women!" - Mitt Romney https://en.wikipedia.org/wiki/Binders_full_of_women
+
+    /**The path of the `smartctl` binary */
+    export let binary_path: string|undefined;
+
+    /**The `smartctl` version found on the system */
+    export let version: Version;
+
+    /**The `uid` of the process */
+    export let executing_uid: number;
+
+    /**The version required for this library to work */
+    export const required_version: Version = {
+        maj: 7,
+        min: 0,
+    };
+
     /**The `smartctl` JSON format version this library expects to function properly */
-    private readonly required_json_format_version: Version = {
+    export const required_json_format_version: Version = {
         maj: 1,
         min: 0,
     };
 
     /**The `smartctl` JSON format version found */
-    private json_format_version: Version;
-
-    constructor(binary_path?:string){
-        this.binary_path = binary_path;
-    }
+    export let json_format_version: Version;
 
     /**
      * Init checks for the existance of smartctl binary, and that the version is 7.0+ because of the 
-     * `-j` JSON output option.
+     * `-j` JSON output option. 
      * 
-     * @returns The instance of this class
      */
-    async init(new_instance: boolean = false){
+    export async function init(binary_path?:string){
 
-        //Check for already existing instance
-        if((SmartCtl.instance) && (!new_instance)){
-            throw "SmartCtl has already been initialized! Set `new_instance` to true to make a new instance anyways."
-        }
-
-        if(!this.binary_path){
+        if(!binary_path){
             //Find binary location
             const which = await pcp.exec("which smartctl", {
                 timeout: 5000,
@@ -72,7 +111,7 @@ export class SmartCtl{
             if(which.stdout != undefined){
                 let output = which.stdout.toString().replace('\n', '');
                 if((output) && (output != '')){
-                    this.binary_path = output;
+                    SmartCtlBinder.binary_path = output;
                 }else{
                     throw "smartctl binary not found! Do you have smartmontools version 7+ installed?";
                 }
@@ -82,7 +121,7 @@ export class SmartCtl{
         }
         
         //Find version
-        const ver = await pcp.exec(`${this.binary_path} -V`, {
+        const ver = await pcp.exec(`${SmartCtlBinder.binary_path} -V`, {
             timeout: 5000,
         });
         let version: string|undefined = undefined;
@@ -117,13 +156,13 @@ export class SmartCtl{
                 }
             }
         }else{
-            throw "Couldn't execute smartctl binary with '" + this.binary_path + " -V'";
+            throw "Couldn't execute smartctl binary with '" + SmartCtlBinder.binary_path + " -V'";
         }
 
         //Parse version string
         if(version_parts){
             let parts = version_parts.split('.');
-            this.version = {
+            SmartCtlBinder.version = {
                 maj: Number(parts[0]),
                 min: Number(parts[1]),
             };
@@ -132,15 +171,15 @@ export class SmartCtl{
         }
 
         //Check version string
-        if((this.version.maj >= this.required_version.maj) && (this.version.min >= this.required_version.min)){
+        if((SmartCtlBinder.version.maj >= SmartCtlBinder.required_version.maj) && (SmartCtlBinder.version.min >= SmartCtlBinder.required_version.min)){
             //Yay!
         }else{
-            throw `smartctl version ${this.version.maj}.${this.version.min} is not supported! This library requires smartctl version 7.0 and up!`;
+            throw `smartctl version ${SmartCtlBinder.version.maj}.${SmartCtlBinder.version.min} is not supported! This library requires smartctl version 7.0 and up!`;
         }
 
         //Check for permissions to execute smartctl
-        this.executing_uid = process.geteuid();
-        let perm_response = await pcp.exec(`ls -l ${this.binary_path}`);
+        SmartCtlBinder.executing_uid = process.geteuid();
+        let perm_response = await pcp.exec(`ls -l ${SmartCtlBinder.binary_path}`);
         if(!perm_response.stdout){
             console.error("Can't determine permissions! Possible failures ahead!");
         }else{
@@ -150,39 +189,37 @@ export class SmartCtl{
             let group = parts[3];
 
             let required_uid = uid(user);
-            if(this.executing_uid != required_uid){
-                throw "Insufficient permissions to run smartctl! You must be user '" + user + "' to run smartctl! You are '" + username(this.executing_uid) + "'.";
+            if(SmartCtlBinder.executing_uid != required_uid){
+                throw "Insufficient permissions to run smartctl! You must be user '" + user + "' to run smartctl! You are '" + username(SmartCtlBinder.executing_uid) + "'.";
             }
         }
 
         //Get JSON format version
-        const json_ver = await pcp.exec(`${this.binary_path} -j -V`);
+        const json_ver = await pcp.exec(`${SmartCtlBinder.binary_path} -j -V`);
         if(!json_ver.stdout){
             console.error("Couldn't get JSON schema version! Possible schema mismatches ahead!");
         }else{
             let json_response = json_ver.stdout!.toString();
             let json_obj = JSON.parse(json_response) as SmartBaseResponse;
-            this.json_format_version = {
+            SmartCtlBinder.json_format_version = {
                 maj: json_obj.json_format_version[0],
                 min: json_obj.json_format_version[1],
             };
         }
 
         //Check JSON format version
-        if((this.json_format_version.maj >= this.required_json_format_version.maj) && (this.json_format_version.min >= this.required_json_format_version.min)){
+        if((SmartCtlBinder.json_format_version.maj >= SmartCtlBinder.required_json_format_version.maj) && (SmartCtlBinder.json_format_version.min >= SmartCtlBinder.required_json_format_version.min)){
             //Yay!
         }else{
-            console.error(`smartctl JSON format version ${this.json_format_version.maj}.${this.json_format_version.min} is not supported! This library supports JSON format ${this.required_json_format_version.maj}.${this.required_json_format_version.min}! Possible format errors ahead!`);
+            console.error(`smartctl JSON format version ${SmartCtlBinder.json_format_version.maj}.${SmartCtlBinder.json_format_version.min} is not supported! This library supports JSON format ${SmartCtlBinder.required_json_format_version.maj}.${SmartCtlBinder.required_json_format_version.min}! Possible format errors ahead!`);
         }
-
-        return this;
     }
 
     /**
      * Sanitizes and checks a supplied disk path
      * @param name_or_path The path string to check
      */
-    private _sanitize_kernel_disk_name(name_or_path: string): string|undefined{
+    export function _sanitize_kernel_disk_name(name_or_path: string): string|undefined{
 
         let path_re_1 = new RegExp('(\/(dev)\/sd[A-Z])', 'i'); //matches only '/dev/sd?'
         if(path_re_1.test(name_or_path)){
@@ -206,7 +243,7 @@ export class SmartCtl{
      * Checks a @see SmartBaseResponse for errors
      * @param response 
      */
-    private _check_response_no_errors(response: SmartBaseResponse): boolean{
+    export function _check_response_no_errors(response: SmartBaseResponse): boolean{
         if(response.smartctl.messages){
             for (let i = 0; i < response.smartctl.messages.length; i++) {
                 const message = response.smartctl.messages[i];
@@ -223,38 +260,37 @@ export class SmartCtl{
      * `all(...)` is the equivalent of using `smartctl -j -a /dev/sd?` in shell.
      * @param device_path A reference to the device path like `dev/sda`, `sda`, or `/dev/sda`
      */
-    async all(device_path: string): Promise<SmartAllResponse>{
-        if(!this.binary_path){
+    export async function all(device_path: string): Promise<SmartAllResponse>{
+        if(!SmartCtlBinder.binary_path){
             throw "Binary path is not found. Unable to continue!";
         }
 
-        let path = this._sanitize_kernel_disk_name(device_path)
+        let path = SmartCtlBinder._sanitize_kernel_disk_name(device_path)
         if(path == undefined){
             throw "Bad device path " + device_path + "!";
         }
 
-        let out = await pcp.exec(`${this.binary_path} -j -a ${path}`);
+        let out = await pcp.exec(`${SmartCtlBinder.binary_path} -j -a ${path}`);
         if(!out.stdout){
-            throw `No output from ${this.binary_path}!\nstderr: ${out.stderr?.toString()}`;
+            throw `No output from ${SmartCtlBinder.binary_path}!\nstderr: ${out.stderr?.toString()}`;
         }
 
         let response = out.stdout.toString();
         let obj = JSON.parse(response) as SmartAllResponse;
-        if(this._check_response_no_errors(obj)){
+        if(SmartCtlBinder._check_response_no_errors(obj)){
             return obj;
         }
         else{
-            throw `Error from ${this.binary_path}: ${obj.smartctl.messages!}`
+            throw `Error from ${SmartCtlBinder.binary_path}: ${obj.smartctl.messages!}`
         }
     }
 
     /**Returns a device object.
      * @returns SmartDevice
      */
-    async get_device(device_path: string){
-        let response = await this.all(device_path);
+    export async function get_device(device_path: string){
+        let response = await SmartCtlBinder.all(device_path);
         let sd: ISmartDevice = {
-            _smart_wrapper_instance: this,
             attributes: response.ata_smart_attributes.table,
             capacity: response.user_capacity.bytes,
             device_node: response.device.name,
@@ -272,10 +308,10 @@ export class SmartCtl{
     /**
      * Gets a list of devices that `smartctl` currently sees.
      */
-    async get_device_list(){
-        let response = await pcp.exec(`${this.binary_path!} -j --scan-open`);
+    export async function get_device_list(){
+        let response = await pcp.exec(`${SmartCtlBinder.binary_path!} -j --scan-open`);
         if(!response.stdout){
-            throw `No output from ${this.binary_path}!\nstderr:${response.stderr?.toString()}`;
+            throw `No output from ${SmartCtlBinder.binary_path}!\nstderr:${response.stderr?.toString()}`;
         }
 
         let smart_response = JSON.parse(response.stdout.toString()) as SmartListResponse;
@@ -287,20 +323,20 @@ export class SmartCtl{
      * @param device_path The path of the device to start the test on
      * @param type The type of test to start
      */
-    async test(device_path: string, type: "short"|"long"){
-        let dev = this._sanitize_kernel_disk_name(device_path);
+    export async function test(device_path: string, type: "short"|"long"){
+        let dev = SmartCtlBinder._sanitize_kernel_disk_name(device_path);
         if(!dev){
             throw "Invalid device path " + device_path + "!";
         }
 
-        let out = await pcp.exec(`${this.binary_path} -j -t ${type} ${dev}`);
+        let out = await pcp.exec(`${SmartCtlBinder.binary_path} -j -t ${type} ${dev}`);
         if(!out.stdout){
-            throw `No output from ${this.binary_path}!\nstderr: ${out.stderr?.toString()}`;
+            throw `No output from ${SmartCtlBinder.binary_path}!\nstderr: ${out.stderr?.toString()}`;
         }
 
         let response = out.stdout.toString();
         let obj = JSON.parse(response) as SmartTestResponse;
-        if(this._check_response_no_errors(obj)){
+        if(SmartCtlBinder._check_response_no_errors(obj)){
             return true;
         }else{
             return false;
@@ -311,23 +347,23 @@ export class SmartCtl{
      * Checks to see if a device is testing or not
      * @param device_path The path of the device to check.
      */
-    async testing(device_path: string){
-        let dev = this._sanitize_kernel_disk_name(device_path);
+    export async function testing(device_path: string){
+        let dev = SmartCtlBinder._sanitize_kernel_disk_name(device_path);
         if(!dev){
             throw "Invalid device path " + device_path + "!";
         }
 
-        let out = await pcp.exec(`${this.binary_path} -j -a ${dev}`);
+        let out = await pcp.exec(`${SmartCtlBinder.binary_path} -j -a ${dev}`);
         if(!out.stdout){
-            throw `No output from ${this.binary_path}!\nstderr: ${out.stderr?.toString()}`;
+            throw `No output from ${SmartCtlBinder.binary_path}!\nstderr: ${out.stderr?.toString()}`;
         }
 
         let response = out.stdout.toString();
         let obj = JSON.parse(response) as SmartAllResponse;
-        if(this._check_response_no_errors(obj)){
+        if(SmartCtlBinder._check_response_no_errors(obj)){
             return obj.ata_smart_data.self_test.status.value <= 250 && obj.ata_smart_data.self_test.status.value >= 241;
         }else{
-            throw `Bad response from ${this.binary_path!}!`;
+            throw `Bad response from ${SmartCtlBinder.binary_path!}!`;
         }
     }
     

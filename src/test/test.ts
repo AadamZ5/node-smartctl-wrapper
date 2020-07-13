@@ -1,22 +1,13 @@
 import { SmartCtl } from "../smartctl/smartctl"
 
-const sc = new SmartCtl().init();
-sc.then((s) => {
-    console.log(s);
-    s.all('/dev/sda').then((r) => {
-        console.log(r);
-    });
-    s.get_device_list().then((r) => {
-        console.log(r);
-    })
-    s.get_device('/dev/sdc').then((r) => {
-        let t = r.test("short");
-        t.promise.then(() => {
-            console.log("Tested!");
-        });
-        t.progress.subscribe((pr) => {
-            console.log("Progress: " + pr + "%");
+SmartCtl.initialize().then(() => {
+    let smartctl = new SmartCtl();
+    smartctl.get_device('dev/sda').then((s) => {
+        console.log(s);
+        s.test("short").subscribe((progress) => {
+            console.log(progress + "%")
+        }, null, () => {
+            console.log("Test complete!");
         })
-        console.log("Started testing");
     })
 })

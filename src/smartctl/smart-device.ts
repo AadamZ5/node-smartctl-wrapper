@@ -1,7 +1,7 @@
 import { SmartXallResponse } from "./typings/responses/xall-response";
 import { SmartAllResponse, AtaSelfTest, AtaSmartErrorLog } from "./typings/responses/all-response";
 import { SmartAttribute } from "./typings/responses/fragments";
-import { SmartCtl } from "./smartctl";
+import { SmartCtlBinder } from "./smartctl";
 import { Observable, Subject } from "rxjs";
 
 export interface ISmartDeviceStats{
@@ -18,11 +18,9 @@ export interface ISmartDevice extends ISmartDeviceStats{
     firmware_version: string;
     capacity: number;
     device_node: string;
-    _smart_wrapper_instance: SmartCtl;
 }
 
 export class SmartDevice implements ISmartDevice{
-    _smart_wrapper_instance: SmartCtl;
     serial: string;
     wwn: string;
     model: string;
@@ -35,7 +33,6 @@ export class SmartDevice implements ISmartDevice{
     attributes: SmartAttribute[];
 
     constructor(device_data: ISmartDevice){
-        this._smart_wrapper_instance = device_data._smart_wrapper_instance;
         this.serial = device_data.serial;
         this.wwn = device_data.wwn;
         this.model = device_data.model;
@@ -50,15 +47,15 @@ export class SmartDevice implements ISmartDevice{
 
     test(type: "short"|"long"){
         let progress_subj = new Subject<number>();
-        let p = new Promise<void>(async (resolve, reject) => {
-            this._smart_wrapper_instance.test(this.device_node, type);
+        SmartCtlBinder.test(this.device_node, type);
+        let poll = async () => {
             let poll_interval = 1000;//ms
             let progress = 0;
             let testing = true;
             while (testing) {
                 await new Promise((resolve) => {setTimeout(() => {resolve();}, poll_interval)})
-                let info = await this._smart_wrapper_instance.all(this.device_node);
-                testing = await this._smart_wrapper_instance.testing(this.device_node);
+                let info = await SmartCtlBinder.all(this.device_node);
+                testing = await SmartCtlBinder.testing(this.device_node);
                 if(testing){
                     let prog = 100 - ((info.ata_smart_data.self_test.status.value - 240) * 10);
                     if(prog != progress){
@@ -67,10 +64,12 @@ export class SmartDevice implements ISmartDevice{
                     }
                 }
             }
-            resolve();
-        });
+            progress_subj.complete();
+        }
 
-        return {promise: p, progress: progress_subj.asObservable()};
+        poll();
+        
+        return progress_subj.asObservable();
     }
 
 }
