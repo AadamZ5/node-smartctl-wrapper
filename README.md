@@ -18,6 +18,13 @@ Please feel free to contribute!
 ### Pros/Cons:
 - Uses RXJS for data pushing (primarily progress from tests)
 
+# Install:
+
+Currently, this package is not in the npm registry, because it is not ready for it. This is still in active development.
+
+To install:</br>
+`npm i AadamZ5/node-smartctl-wrapper`
+
 # Example Usage:
 
 #### Test a device
