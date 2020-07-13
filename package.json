@@ -6,8 +6,9 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prepublish": "tsc",
-    "prepare": "tsc"
+    "build": "tsc",
+    "prepublish": "build",
+    "prepare": "build"
   },
   "repository": {
     "type": "git",
