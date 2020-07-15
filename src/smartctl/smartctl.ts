@@ -118,6 +118,8 @@ export namespace SmartCtlWrapper{
             }else{
                 throw "smartctl binary not found! Do you have smartmontools version 7+ installed?";
             }
+        }else{
+            SmartCtlWrapper.binary_path = binary_path;
         }
         
         //Find version
