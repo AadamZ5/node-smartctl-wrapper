@@ -23,7 +23,7 @@ Please feel free to contribute!
 Currently, this package is not in the npm registry, because it is not ready for it. This is still in active development.
 
 To install:</br>
-`npm i AadamZ5/node-smartctl-wrapper`
+`npm i AadamZ5/node-smartctl-wrapper#master`
 
 # Example Usage
 
