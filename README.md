@@ -6,26 +6,26 @@ I'm not entirely sure the exact direction this is headed yet, but I'm working ar
 
 Please feel free to contribute!
 
-### Pros:
+### Pros
 - Structured and typed responses from `smartctl`
 - Object-oriented device testing
 - Flexible interfaces for modularity
   
-### Cons:
+### Cons
 - Requires `smartctl` from smartmontools v7.0^ to be installed
 - Usually requires `sudo` or root privledges to execute `smartctl`
 
-### Pros/Cons:
+### Pros/Cons
 - Uses RXJS for data pushing (primarily progress from tests)
 
-# Install:
+# Install
 
 Currently, this package is not in the npm registry, because it is not ready for it. This is still in active development.
 
 To install:</br>
 `npm i AadamZ5/node-smartctl-wrapper`
 
-# Example Usage:
+# Example Usage
 
 #### Test a device
 ```typescript
@@ -43,3 +43,6 @@ SmartCtl.initialize().then(() => { // `initialize()` is a static and instance-bo
     })
 })
 ```
+
+# Known bugs
+- Won't install properly on WSL due to `node-userid` package
