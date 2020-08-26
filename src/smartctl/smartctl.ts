@@ -296,12 +296,12 @@ export namespace SmartCtlWrapper{
             attributes: response.ata_smart_attributes.table,
             capacity: response.user_capacity.bytes,
             device_node: response.device.name,
-            errors: (response.ata_smart_error_log.extended != undefined) ? (response.ata_smart_error_log.extended.table != undefined) ? response.ata_smart_error_log.extended.table! : [] : [],
+            errors: (response.ata_smart_error_log.extended != undefined) ? (response.ata_smart_error_log.extended.table != undefined) ? response.ata_smart_error_log.extended.table! : [] : [], //Sorry this is ugly
             firmware_version: response.firmware_version,
             model: response.model_name,
             overall_pass: response.smart_status.passed,
             serial: response.serial_number,
-            tests: (response.ata_smart_self_test_log.extended != undefined) ? (response.ata_smart_self_test_log.extended.table != undefined) ? response.ata_smart_self_test_log.extended.table! : [] : [],
+            tests: (response.ata_smart_self_test_log.extended != undefined) ? (response.ata_smart_self_test_log.extended.table != undefined) ? response.ata_smart_self_test_log.extended.table! : [] : [], //This too
             wwn: response.wwn,
         };
         return new SmartDevice(sd);
