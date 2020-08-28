@@ -16,7 +16,7 @@ Please feel free to contribute!
 - Usually requires `sudo` or root privledges to execute `smartctl`
 
 ### Pros/Cons
-- Uses RXJS for data pushing (primarily progress from tests)
+- Uses RxJS for data pushing (primarily progress from tests)
 
 # Install
 
@@ -33,14 +33,17 @@ import { SmartCtl } from "node-smartctl-wrapper";
 
 SmartCtl.initialize().then(() => { // `initialize()` is a static and instance-bound function. You can use it either way.
     let smartctl = new SmartCtl();
-    smartctl.get_device('dev/sda').then((device) => {
-        console.log(device);
-        device.test("short").subscribe((progress) => {
-            console.log(progress + "%")
-        }, null, () => {
-            console.log("Test complete!");
+    smartctl.get_device('dev/sda').then((s) => {
+        console.log(s);
+        let t = s.test("short");
+        t.progress_observable.subscribe((p) => {
+            console.log("Progress: " + p);
+        }, (e) => {
+            console.error("Error during test: " + e);
+        }, () => {
+            console.log("Test completed. Result: " + t.passed);
         })
-    })
+    });
 })
 ```
 
