@@ -26,9 +26,14 @@ export interface AtaSmartData{
     /**Information about any current self test running */
     self_test:{
         status:{
+            /**The raw test value from the hard drive */
             value: number;
+            /**A string summary of the test status */
             string: string;
+            /**From observation, appears only when no test is running */
             passed?: boolean;
+            /**From observation, appears only when a test is running */
+            remaining_percent?: number;
         };
         /**The amount of time you should expect a test to take */
         polling_minutes:{
@@ -87,9 +92,12 @@ export type AtaSelfTestType = {
 export type AtaSelfTestStatus = {
     /**Kind of like an "exit-code" for the self-test */
     value: number;
+    /**A status string summary for the test */
     string: string;
+    /**How much of the test was left */
     remaining_percent?: number;
-    passed: boolean;
+    /**If the test passed */
+    passed?: boolean;
 }
 
 export interface AtaSelfTest{
@@ -99,14 +107,30 @@ export interface AtaSelfTest{
 }
 
 export interface AtaSelfTestLog{
-    extended: {
+
+    /**
+     * I don't know what determines which one of these appears, but one of them should
+     */
+
+    /**The extended self-test log */
+    extended?: {
         revision: number;
         sectors: number;
         table: AtaSelfTest[];
         count: number;
         error_count_total: number;
         error_count_outdated: number;
-    }    
+    }
+
+    /**The standard self-test log */
+    standard?: {
+        revision: number;
+        sectors: number;
+        table: AtaSelfTest[]; //Beware, it looks like some drives report TEST PROGRESS reports here instead of only test-runs.
+        count: number;
+        error_count_total: number;
+        error_count_outdated: number;
+    }
 }
 
 export type AtaSctCapabilities = {

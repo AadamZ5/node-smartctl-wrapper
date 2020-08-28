@@ -3,6 +3,7 @@ import { SmartAllResponse, AtaSelfTest, AtaSmartErrorLog } from "./typings/respo
 import { SmartAttribute } from "./typings/responses/fragments";
 import { SmartCtlWrapper } from "./smartctl";
 import { Observable, Subject } from "rxjs";
+import { SmartTestType, SmartTest } from "./smart_test";
 
 export interface ISmartDeviceStats{
     overall_pass: boolean;
@@ -45,31 +46,10 @@ export class SmartDevice implements ISmartDevice{
         this.attributes = device_data.attributes;
     }
 
-    test(type: "short"|"long"){
-        let progress_subj = new Subject<number>();
-        SmartCtlWrapper.test(this.device_node, type);
-        let poll = async () => {
-            let poll_interval = 1000;//ms
-            let progress = 0;
-            let testing = true;
-            while (testing) {
-                await new Promise((resolve) => {setTimeout(() => {resolve();}, poll_interval)})
-                let info = await SmartCtlWrapper.all(this.device_node);
-                testing = await SmartCtlWrapper.testing(this.device_node);
-                if(testing){
-                    let prog = 100 - ((info.ata_smart_data.self_test.status.value - 240) * 10);
-                    if(prog != progress){
-                        progress = prog;
-                        progress_subj.next(progress);
-                    }
-                }
-            }
-            progress_subj.complete();
-        }
-
-        poll();
-        
-        return progress_subj.asObservable();
+    /**Creates a test object and returns it */
+    test(type: SmartTestType){
+        let t = new SmartTest(type, this, true);
+        return t;
     }
 
 }

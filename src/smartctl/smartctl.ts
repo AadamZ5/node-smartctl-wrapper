@@ -1,11 +1,12 @@
 import * as pcp from "promisify-child-process";
-import { SmartAllResponse } from "./typings/responses/all-response";
+import { SmartAllResponse, AtaSelfTestLog } from "./typings/responses/all-response";
 import { SmartBaseResponse } from "./typings/responses/base-response";
 import { uid, username } from "userid";
 import { SmartListResponse } from "./typings/responses/scan-response";
 import { ISmartDevice, SmartDevice } from "./smart-device";
 import { timeStamp } from "console";
 import { SmartTestResponse } from "./typings/responses/test-response";
+import { SmartTestType } from "./smart_test";
 
 interface Version{
     maj: number;
@@ -41,7 +42,9 @@ export class SmartCtl{
     }
 
     async get_device(device_path: string){
-        return SmartCtlWrapper.get_device(device_path);
+        let d = await SmartCtlWrapper.get_device(device_path);
+        let sd = new SmartDevice(d);
+        return d;
     }
 
     async get_all_devices(){
@@ -53,7 +56,7 @@ export class SmartCtl{
             if (devices.devices.hasOwnProperty(device_key)) {
                 const device_listing = devices.devices[device_key];
                 let d = await SmartCtlWrapper.get_device(device_listing.name);
-                device_objects.push(d);
+                device_objects.push(new SmartDevice(d));
             }
         }
 
@@ -292,6 +295,15 @@ export namespace SmartCtlWrapper{
      */
     export async function get_device(device_path: string){
         let response = await SmartCtlWrapper.all(device_path);
+
+        const test_log = (stl: AtaSelfTestLog) => {
+            if(stl.extended != undefined){
+                return stl.extended.table? stl.extended.table : [];
+            }else{
+                return stl.standard?.table? stl.standard.table : [];
+            }
+        }
+
         let sd: ISmartDevice = {
             attributes: response.ata_smart_attributes.table,
             capacity: response.user_capacity.bytes,
@@ -301,10 +313,10 @@ export namespace SmartCtlWrapper{
             model: response.model_name,
             overall_pass: response.smart_status.passed,
             serial: response.serial_number,
-            tests: (response.ata_smart_self_test_log.extended != undefined) ? (response.ata_smart_self_test_log.extended.table != undefined) ? response.ata_smart_self_test_log.extended.table! : [] : [], //This too
+            tests: test_log(response.ata_smart_self_test_log),
             wwn: response.wwn,
         };
-        return new SmartDevice(sd);
+        return sd;
     }
 
     /**
@@ -325,7 +337,7 @@ export namespace SmartCtlWrapper{
      * @param device_path The path of the device to start the test on
      * @param type The type of test to start
      */
-    export async function test(device_path: string, type: "short"|"long"){
+    export async function test(device_path: string, type: SmartTestType){
         let dev = SmartCtlWrapper._sanitize_kernel_disk_name(device_path);
         if(!dev){
             throw "Invalid device path " + device_path + "!";
@@ -346,7 +358,7 @@ export namespace SmartCtlWrapper{
     }
 
     /**
-     * Checks to see if a device is testing or not
+     * Checks to see if a device is testing or not. 
      * @param device_path The path of the device to check.
      */
     export async function testing(device_path: string){

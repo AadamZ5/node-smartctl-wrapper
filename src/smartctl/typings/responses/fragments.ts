@@ -22,7 +22,7 @@ export interface SmartAttribute{
 export type SmartMessage = {
     /**The message itself */
     string?: string;
-    /**A severity indicator */
+    /**A severity indicator like 'error' or 'warn'*/
     severity?: string;
 }
 
