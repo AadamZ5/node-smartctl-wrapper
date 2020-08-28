@@ -44,7 +44,7 @@ export class SmartCtl{
     async get_device(device_path: string){
         let d = await SmartCtlWrapper.get_device(device_path);
         let sd = new SmartDevice(d);
-        return d;
+        return sd;
     }
 
     async get_all_devices(){
