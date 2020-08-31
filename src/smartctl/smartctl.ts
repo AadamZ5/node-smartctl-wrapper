@@ -381,4 +381,22 @@ export namespace SmartCtlWrapper{
         }
     }
     
+    export async function abort_test(device_path: string){
+        if( !(await testing(device_path)) ){
+            throw `Device ${device_path} is not currently testing`;
+        }
+
+        let out = await pcp.exec(`${SmartCtlWrapper.binary_path} -j -X ${device_path}`);
+        if(!out.stdout){
+            throw `No output from ${SmartCtlWrapper.binary_path}!\nstderr: ${out.stderr?.toString()}`;
+        }
+
+        let response = out.stdout.toString();
+        let obj = JSON.parse(response) as SmartAllResponse;
+        if(SmartCtlWrapper._check_response_no_errors(obj)){
+            return true;
+        }else{
+            return false;
+        }
+    }
 }

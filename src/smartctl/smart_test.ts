@@ -109,7 +109,7 @@ export class SmartTest implements ISmartTest{
                 //There is no `remaining_percent`, look for `passed` field
                 if(r.ata_smart_data.self_test.status.passed != undefined){
                     this.passed = r.ata_smart_data.self_test.status.passed
-                }else if(r.ata_smart_data.self_test.status.value == 25){
+                }else if(r.ata_smart_data.self_test.status.value == 21){ //TODO: Figure out what makes this this. The value seems to vary on abortion
                     this._progress_subject.error(new TestAbortedError("Test was aborted: " + r.ata_smart_data.self_test.status.string));
                 }else{
                     this._progress_subject.error(new TestError("No pass indicator found when test completed"));
@@ -123,7 +123,7 @@ export class SmartTest implements ISmartTest{
 
     /**
      * Starts the configured test object.
-     * @returns An observable for progress updates and calls `complete` upon test completion.
+     * @returns An observable for progress updates and calls `complete` of the observable upon test completion.
      */
     async start(){
 
@@ -138,7 +138,7 @@ export class SmartTest implements ISmartTest{
             }else{
                 throw new TestError(`Unknown test error.`);
             }
-        })
+        });
 
         if (already_testing){
             //Start watching progress
@@ -147,6 +147,14 @@ export class SmartTest implements ISmartTest{
             return this.progress_observable;
         }else{
             throw new TestError(`Unknown test error.`);
+        }
+    }
+
+    async abort(){
+        if(this._testing){
+            return await SmartCtlWrapper.abort_test(this._parent_device.device_node)
+        }else{
+            return false;
         }
     }
 }
