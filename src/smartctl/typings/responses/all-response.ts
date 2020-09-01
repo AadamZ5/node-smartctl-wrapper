@@ -41,6 +41,8 @@ export interface AtaSmartData{
             short: number;
             /**Expected wait for a long test */
             extended: number;
+            /**Expected wait for a conveyance test */
+            conveyance?: number;
         };
     };
     capabilities: AtaCapabilities;

@@ -275,7 +275,14 @@ export namespace SmartCtlWrapper{
             throw "Bad device path " + device_path + "!";
         }
 
-        let out = await pcp.exec(`${SmartCtlWrapper.binary_path} -j -a ${path}`);
+        let out = await pcp.exec(`${SmartCtlWrapper.binary_path} -j -a ${path}`).catch((err) => {
+            console.warn("Error while getting info for " + path);
+            return null;
+        });
+        if(!out){
+            throw `No output to parse!`;
+        }
+
         if(!out.stdout){
             throw `No output from ${SmartCtlWrapper.binary_path}!\nstderr: ${out.stderr?.toString()}`;
         }

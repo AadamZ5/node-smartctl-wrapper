@@ -17,6 +17,7 @@ export interface ISmartDevice extends ISmartDeviceStats{
     wwn: string|any;
     model: string;
     firmware_version: string;
+    /**Capacity in bytes */
     capacity: number;
     device_node: string;
 }
