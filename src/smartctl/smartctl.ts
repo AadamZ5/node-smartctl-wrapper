@@ -277,6 +277,7 @@ export namespace SmartCtlWrapper{
 
         let out = await pcp.exec(`${SmartCtlWrapper.binary_path} -j -a ${path}`).catch((err) => {
             console.warn("Error while getting info for " + path);
+            console.error(err);
             return null;
         });
         if(!out){
